@@ -12,12 +12,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
-#include "modules/module_manager.h"
-#include "modules/memory_pool_module.h"
-#include "modules/threadpool_module.h"
-#include "modules/enhanced_network_module.h"
-#include "modules/logger_module.h"
-#include "modules/config_module.h"
+#include "src/modules/module_manager.h"
+#include "src/modules/memory_pool_module.h"
+#include "src/modules/threadpool_module.h"
+#include "src/modules/enhanced_network_module.h"
+#include "src/log/logger_module.h"
+#include "src/modules/config_module.h"
+#include "src/http/http_module.h"
+#include "src/modules/json_parser_module.h"
+#include "src/http/http_routes.h"
 
 
 // 全局变量
@@ -116,6 +119,14 @@ int initialize_program() {
         fprintf(stderr, "注册增强网络模块失败\n");
         return -1;
     }
+    
+    if (module_manager_register_module(module_mgr, &http_module) != 0) {
+        fprintf(stderr, "注册HTTP模块失败\n");
+        return -1;
+    }
+    
+    // 注册HTTP路由
+    register_http_routes();
     
     // 注册信号处理
     uv_signal_t *signal_handle = malloc(sizeof(uv_signal_t));

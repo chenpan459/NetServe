@@ -1,0 +1,49 @@
+# CMake 构建输出
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# 编译输出
+*.o
+*.obj
+*.exe
+*.out
+*.app
+
+# 库文件
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# 调试文件
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# 临时文件
+*~
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# IDE 文件
+.vscode/
+.idea/
+*.workspace
+*.project
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 配置文件（如果需要的话）
+# config/*.ini

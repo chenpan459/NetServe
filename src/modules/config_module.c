@@ -447,9 +447,20 @@ int config_load_from_file(const char *filename) {
     while (fgets(line, sizeof(line), fp)) {
         line_count++;
         
-        // 跳过注释和空行
-        if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') {
+        // 跳过空行
+        if (line[0] == '\n' || line[0] == '\r') {
             continue;
+        }
+        
+        // 跳过以#开头的注释行
+        if (line[0] == '#') {
+            continue;
+        }
+        
+        // 查找行内注释（#后面的内容）
+        char *comment_pos = strchr(line, '#');
+        if (comment_pos) {
+            *comment_pos = '\0'; // 截断注释部分
         }
         
         // 解析配置行

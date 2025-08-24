@@ -1,4 +1,5 @@
 #include "enhanced_network_module.h"
+#include "config_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -268,6 +269,7 @@ int enhanced_network_module_init(module_interface_t *self, uv_loop_t *loop) {
     // 初始化私有数据
     memset(data, 0, sizeof(enhanced_network_private_data_t));
     data->config = default_config;
+    
     data->clients = malloc(sizeof(uv_tcp_t*) * INITIAL_CLIENT_CAPACITY);
     if (!data->clients) {
         free(data);
@@ -300,6 +302,11 @@ int enhanced_network_module_start(module_interface_t *self) {
     }
     
     enhanced_network_private_data_t *data = (enhanced_network_private_data_t*) self->private_data;
+    
+    // 从配置文件读取端口设置
+    int config_port = config_get_int("enhanced_network_port", data->config.port);
+    data->config.port = config_port;
+    printf("增强网络模块配置端口: %d (默认: %d)\n", config_port, data->config.port);
     
     // 绑定地址
     struct sockaddr_in addr;
