@@ -292,7 +292,7 @@ static void log_internal_sync(log_level_t level, const char *format, va_list arg
     
     // 直接写入文件
     if (global_logger_data && global_logger_data->config.enable_file) {
-        char full_message[1024 + 64];
+        char full_message[2048]; // 增加缓冲区大小以避免截断
         if (global_logger_data->config.enable_timestamp) {
             char timestamp[64];
             get_timestamp(timestamp, sizeof(timestamp));

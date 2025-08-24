@@ -20,6 +20,7 @@
 #include "src/config/config_module.h"
 #include "src/http/http_module.h"
 #include "src/json/json_parser_module.h"
+#include "src/db/database_module.h"
 #include "src/http/http_routes.h"
 
 
@@ -125,8 +126,10 @@ int initialize_program() {
         return -1;
     }
     
-    // 注册HTTP路由
-    register_http_routes();
+    if (module_manager_register_module(module_mgr, (struct module_interface*)&database_module_interface) != 0) {
+        fprintf(stderr, "注册数据库模块失败\n");
+        return -1;
+    }
     
     // 注册信号处理
     uv_signal_t *signal_handle = malloc(sizeof(uv_signal_t));
@@ -148,6 +151,9 @@ int run_program() {
         fprintf(stderr, "启动模块失败\n");
         return -1;
     }
+    
+    // 在模块启动后注册HTTP路由
+    register_http_routes();
     
     // 运行事件循环
     int result = uv_run(main_loop, UV_RUN_DEFAULT);

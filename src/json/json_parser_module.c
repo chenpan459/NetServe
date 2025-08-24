@@ -269,11 +269,12 @@ int json_write_file(const char *filename, const json_value_t *value) {
         return -1;
     }
     
-    size_t written = fwrite(json_string, 1, strlen(json_string), file);
+    size_t json_length = strlen(json_string);
+    size_t written = fwrite(json_string, 1, json_length, file);
     fclose(file);
     free(json_string);
     
-    if (written != strlen(json_string)) {
+    if (written != json_length) {
         global_last_error = JSON_ERROR_FILE_IO;
         return -1;
     }

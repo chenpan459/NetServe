@@ -34,6 +34,7 @@ file(GLOB MODULE_SRCS
     "src/thread/*.c"
     "src/net/*.c"
     "src/json/*.c"
+    "src/db/*.c"
 )
 
 # 所有源文件
@@ -54,6 +55,7 @@ target_include_directories(tcp_server_multithreaded PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/thread
     ${CMAKE_CURRENT_SOURCE_DIR}/src/net
     ${CMAKE_CURRENT_SOURCE_DIR}/src/json
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/db
     ${LIBUV_INCLUDE_DIRS}
 )
 
