@@ -3,10 +3,22 @@
 #include <string.h>
 #include <signal.h>
 #include <uv.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#define F_OK 0
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 #include "modules/module_manager.h"
-#include "modules/network_module.h"
+#include "modules/memory_pool_module.h"
+#include "modules/threadpool_module.h"
+#include "modules/enhanced_network_module.h"
 #include "modules/logger_module.h"
 #include "modules/config_module.h"
+
 
 // 全局变量
 uv_loop_t *main_loop;
@@ -33,13 +45,37 @@ void cleanup_and_exit(int exit_code) {
 
 // 信号处理
 void signal_handler(uv_signal_t *handle, int signum) {
+    (void)handle; // 避免未使用参数警告
     printf("\n收到信号 %d，正在退出...\n", signum);
     cleanup_and_exit(0);
+}
+
+// 初始化配置文件系统
+static int initialize_config_system() {
+    // 检查配置文件是否存在
+#ifdef _WIN32
+    if (_access("config/config.ini", 0) != 0) {
+#else
+    if (access("config/config.ini", F_OK) != 0) {
+#endif
+        printf("配置文件不存在: config/config.ini\n");
+        printf("请确保配置文件已正确放置在config目录中\n");
+        return -1;
+    }
+    
+    printf("配置文件系统初始化完成\n");
+    return 0;
 }
 
 // 主程序初始化
 int initialize_program() {
     printf("=== TCP 通信程序启动 ===\n");
+    
+    // 初始化配置文件系统
+    if (initialize_config_system() != 0) {
+        fprintf(stderr, "配置文件系统初始化失败\n");
+        return -1;
+    }
     
     // 创建主事件循环
     main_loop = uv_default_loop();
@@ -66,8 +102,18 @@ int initialize_program() {
         return -1;
     }
     
-    if (module_manager_register_module(module_mgr, &network_module) != 0) {
-        fprintf(stderr, "注册网络模块失败\n");
+    if (module_manager_register_module(module_mgr, &memory_pool_module) != 0) {
+        fprintf(stderr, "注册内存池模块失败\n");
+        return -1;
+    }
+    
+    if (module_manager_register_module(module_mgr, &threadpool_module) != 0) {
+        fprintf(stderr, "注册线程池模块失败\n");
+        return -1;
+    }
+    
+    if (module_manager_register_module(module_mgr, &enhanced_network_module) != 0) {
+        fprintf(stderr, "注册增强网络模块失败\n");
         return -1;
     }
     
@@ -104,6 +150,9 @@ int run_program() {
 }
 
 int main(int argc, char *argv[]) {
+    (void)argc; // 避免未使用参数警告
+    (void)argv; // 避免未使用参数警告
+    
     // 初始化程序
     if (initialize_program() != 0) {
         fprintf(stderr, "程序初始化失败\n");

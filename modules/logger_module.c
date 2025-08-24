@@ -124,8 +124,9 @@ static void log_internal(log_level_t level, const char *format, va_list args) {
             if (data->config.enable_timestamp) {
                 char timestamp[64];
                 get_timestamp(timestamp, sizeof(timestamp));
-                snprintf(full_message, sizeof(full_message), "[%s] %s %s", 
-                        timestamp, level_strings[level], message);
+                                snprintf(full_message, sizeof(full_message), "[%s] %s %.*s",
+                        timestamp, level_strings[level], 
+                        (int)(sizeof(full_message) - strlen(timestamp) - strlen(level_strings[level]) - 5), message);
             } else {
                 snprintf(full_message, sizeof(full_message), "%s %s", 
                         level_strings[level], message);
@@ -173,6 +174,8 @@ void log_fatal(const char *format, ...) {
 
 // 日志模块初始化
 int logger_module_init(module_interface_t *self, uv_loop_t *loop) {
+    (void)loop; // 避免未使用参数警告
+    
     if (!self) {
         return -1;
     }

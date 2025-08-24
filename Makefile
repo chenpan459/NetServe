@@ -14,7 +14,7 @@ MODULE_SRCS = $(wildcard $(MODULES_DIR)/*.c)
 ALL_SRCS = $(MAIN_SRC) $(MODULE_SRCS)
 
 # 目标文件
-TARGET = $(BUILD_DIR)/tcp_server_modular
+TARGET = $(BUILD_DIR)/tcp_server_multithreaded
 OBJS = $(ALL_SRCS:%.c=$(OBJ_DIR)/%.o)
 
 # 默认目标
@@ -31,6 +31,8 @@ $(TARGET): $(OBJS) | $(BUILD_DIR)
 	$(CC) $(OBJS) -o $@ $(LIBS)
 	@echo "编译完成: $@"
 
+
+
 # 编译源文件
 $(OBJ_DIR)/%.o: %.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -44,6 +46,11 @@ clean:
 # 运行程序
 run: $(TARGET)
 	@echo "运行程序..."
+	./$(TARGET)
+
+# 测试
+test: $(TARGET)
+	@echo "启动服务器..."
 	./$(TARGET)
 
 # 调试版本
@@ -72,6 +79,7 @@ help:
 	@echo "  all        - 编译程序"
 	@echo "  clean      - 清理编译文件"
 	@echo "  run        - 运行程序"
+	@echo "  test       - 启动服务器进行测试"
 	@echo "  debug      - 编译调试版本"
 	@echo "  release    - 编译发布版本"
 	@echo "  install    - 安装程序"

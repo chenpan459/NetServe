@@ -5,7 +5,7 @@
 
 // 默认配置
 static config_module_config_t default_config = {
-    .config_file = "config.ini",
+    .config_file = "config/config.ini",
     .auto_save = 1,
     .auto_reload = 0
 };
@@ -98,6 +98,8 @@ static int add_config_item(config_item_t *item) {
 
 // 配置模块初始化
 int config_module_init(module_interface_t *self, uv_loop_t *loop) {
+    (void)loop; // 避免未使用参数警告
+    
     if (!self) {
         return -1;
     }

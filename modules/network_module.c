@@ -119,6 +119,7 @@ static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 
 // 分配缓冲区回调
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+    (void)handle; // 避免未使用参数警告
     buf->base = malloc(suggested_size);
     buf->len = suggested_size;
 }
