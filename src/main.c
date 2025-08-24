@@ -13,13 +13,13 @@
 #include <unistd.h>
 #endif
 #include "src/modules/module_manager.h"
-#include "src/modules/memory_pool_module.h"
-#include "src/modules/threadpool_module.h"
-#include "src/modules/enhanced_network_module.h"
+#include "src/memory/memory_pool_module.h"
+#include "src/thread/threadpool_module.h"
+#include "src/net/enhanced_network_module.h"
 #include "src/log/logger_module.h"
-#include "src/modules/config_module.h"
+#include "src/config/config_module.h"
 #include "src/http/http_module.h"
-#include "src/modules/json_parser_module.h"
+#include "src/json/json_parser_module.h"
 #include "src/http/http_routes.h"
 
 

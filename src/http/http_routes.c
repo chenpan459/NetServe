@@ -1,5 +1,5 @@
 #include "src/http/http_module.h"
-#include "src/modules/json_parser_module.h"
+#include "src/json/json_parser_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
