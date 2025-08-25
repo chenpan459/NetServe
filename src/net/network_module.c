@@ -1,8 +1,10 @@
-#include "network_module.h"
-#include "config_module.h"
+#include "src/net/network_module.h"
+#include "src/log/logger_module.h"
+#include "src/config/config_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
 
 #define INITIAL_CLIENT_CAPACITY 16
 
@@ -53,7 +55,7 @@ static int add_client(network_private_data_t *data, uv_tcp_t *client) {
     data->clients[data->client_count] = client;
     data->client_count++;
     
-    printf("新客户端连接，当前连接数: %zu\n", data->client_count);
+            log_info("新客户端连接，当前连接数: %zu", data->client_count);
     return 0;
 }
 
@@ -66,7 +68,7 @@ static int remove_client(network_private_data_t *data, uv_tcp_t *client) {
                 data->clients[j] = data->clients[j + 1];
             }
             data->client_count--;
-            printf("客户端断开连接，当前连接数: %zu\n", data->client_count);
+            log_info("客户端断开连接，当前连接数: %zu", data->client_count);
             return 0;
         }
     }
@@ -83,7 +85,7 @@ static void on_client_close(uv_handle_t *handle) {
 // 写入完成回调
 static void on_write_complete(uv_write_t *req, int status) {
     if (status) {
-        fprintf(stderr, "写入错误: %s\n", uv_strerror(status));
+        log_error("写入错误: %s", uv_strerror(status));
     }
     
     // 释放写入请求
@@ -94,7 +96,7 @@ static void on_write_complete(uv_write_t *req, int status) {
 static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
     if (nread > 0) {
         // 显示接收到的消息
-        printf("收到消息: %.*s\n", (int)nread, buf->base);
+        log_info("收到消息: %.*s", (int)nread, buf->base);
         
         // 构造回复消息
         char reply[256];
@@ -110,7 +112,7 @@ static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
         free(buf->base);
     } else if (nread < 0) {
         if (nread != UV_EOF) {
-            fprintf(stderr, "读取错误: %s\n", uv_err_name(nread));
+            log_error("读取错误: %s", uv_err_name(nread));
         }
         uv_close((uv_handle_t*) stream, on_client_close);
     } else {
@@ -128,7 +130,7 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
 // 新连接回调
 static void on_new_connection(uv_stream_t *server, int status) {
     if (status < 0) {
-        fprintf(stderr, "新连接错误: %s\n", uv_strerror(status));
+        log_error("新连接错误: %s", uv_strerror(status));
         return;
     }
     
@@ -137,7 +139,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
     // 创建新的客户端连接
     uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
     if (!client) {
-        fprintf(stderr, "内存分配失败\n");
+        log_error("内存分配失败");
         return;
     }
     
@@ -147,7 +149,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
     if (uv_accept(server, (uv_stream_t*) client) == 0) {
         if (add_client(data, client) == 0) {
             uv_read_start((uv_stream_t*) client, alloc_buffer, on_read);
-            printf("新客户端连接\n");
+            log_info("新客户端连接");
         } else {
             uv_close((uv_handle_t*) client, on_client_close);
         }
@@ -187,7 +189,7 @@ int network_module_init(module_interface_t *self, uv_loop_t *loop) {
     
     self->private_data = data;
     
-    printf("网络模块初始化成功\n");
+    log_info("网络模块初始化成功");
     return 0;
 }
 
@@ -202,7 +204,7 @@ int network_module_start(module_interface_t *self) {
     // 从配置文件读取端口设置
     int config_port = config_get_int("network_port", data->config.port);
     data->config.port = config_port;
-    printf("网络模块配置端口: %d (默认: %d)\n", config_port, data->config.port);
+    log_info("网络模块配置端口: %d (默认: %d)", config_port, data->config.port);
     
     // 绑定地址
     struct sockaddr_in addr;
@@ -210,18 +212,18 @@ int network_module_start(module_interface_t *self) {
     
     int bind_result = uv_tcp_bind(&data->server, (const struct sockaddr*)&addr, 0);
     if (bind_result != 0) {
-        fprintf(stderr, "绑定地址失败: %s\n", uv_strerror(bind_result));
+        log_error("绑定地址失败: %s", uv_strerror(bind_result));
         return -1;
     }
     
     // 开始监听
     int listen_result = uv_listen((uv_stream_t*) &data->server, data->config.backlog, on_new_connection);
     if (listen_result != 0) {
-        fprintf(stderr, "监听失败: %s\n", uv_strerror(listen_result));
+        log_error("监听失败: %s", uv_strerror(listen_result));
         return -1;
     }
     
-    printf("网络模块启动成功，监听 %s:%d\n", data->config.host, data->config.port);
+    log_info("网络模块启动成功，监听 %s:%d", data->config.host, data->config.port);
     return 0;
 }
 
@@ -241,7 +243,7 @@ int network_module_stop(module_interface_t *self) {
     // 关闭服务器
     uv_close((uv_handle_t*) &data->server, NULL);
     
-    printf("网络模块已停止\n");
+    log_info("网络模块已停止");
     return 0;
 }
 
@@ -267,7 +269,7 @@ int network_module_cleanup(module_interface_t *self) {
     free(data);
     self->private_data = NULL;
     
-    printf("网络模块清理完成\n");
+    log_info("网络模块清理完成");
     return 0;
 }
 
@@ -290,7 +292,7 @@ int network_module_set_config(module_interface_t *self, network_config_t *config
     }
     data->config.host = strdup(config->host);
     
-    printf("网络模块配置已更新\n");
+    log_info("网络模块配置已更新");
     return 0;
 }
 
@@ -322,8 +324,8 @@ void network_module_list_clients(module_interface_t *self) {
     
     network_private_data_t *data = (network_private_data_t*) self->private_data;
     
-    printf("当前客户端连接数: %zu\n", data->client_count);
+    log_info("当前客户端连接数: %zu", data->client_count);
     for (size_t i = 0; i < data->client_count; i++) {
-        printf("  客户端 %zu: %p\n", i, data->clients[i]);
+        log_info("  客户端 %zu: %p", i, data->clients[i]);
     }
 }

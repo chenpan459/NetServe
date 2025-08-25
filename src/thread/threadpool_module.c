@@ -1,7 +1,9 @@
-#include "threadpool_module.h"
+#include "src/thread/threadpool_module.h"
+#include "src/log/logger_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
 
 // 默认配置
 static threadpool_config_t default_config = {
@@ -133,7 +135,7 @@ int threadpool_module_init(module_interface_t *self, uv_loop_t *loop) {
     self->private_data = data;
     global_threadpool_data = data;
     
-    printf("线程池模块初始化成功\n");
+    log_info("线程池模块初始化成功");
     return 0;
 }
 
@@ -148,12 +150,12 @@ int threadpool_module_start(module_interface_t *self) {
     // 创建工作线程
     for (int i = 0; i < data->config.thread_count; i++) {
         if (uv_thread_create(&data->threads[i], worker_thread, data) != 0) {
-            fprintf(stderr, "创建工作线程 %d 失败\n", i);
+            log_error("创建工作线程 %d 失败", i);
             return -1;
         }
     }
     
-    printf("线程池模块启动成功，创建了 %d 个工作线程\n", data->config.thread_count);
+    log_info("线程池模块启动成功，创建了 %d 个工作线程", data->config.thread_count);
     return 0;
 }
 
@@ -176,7 +178,7 @@ int threadpool_module_stop(module_interface_t *self) {
         uv_thread_join(&data->threads[i]);
     }
     
-    printf("线程池模块已停止\n");
+    log_info("线程池模块已停止");
     return 0;
 }
 
@@ -218,7 +220,7 @@ int threadpool_module_cleanup(module_interface_t *self) {
     self->private_data = NULL;
     global_threadpool_data = NULL;
     
-    printf("线程池模块清理完成\n");
+    log_info("线程池模块清理完成");
     return 0;
 }
 
@@ -330,7 +332,7 @@ int threadpool_module_set_config(module_interface_t *self, threadpool_config_t *
     data->config = *config;
     data->max_queue_size = config->max_queue_size;
     
-    printf("线程池模块配置已更新\n");
+    log_info("线程池模块配置已更新");
     return 0;
 }
 
@@ -373,20 +375,20 @@ int threadpool_get_queued_work_count(void) {
 // 打印线程池统计信息
 void threadpool_print_stats(void) {
     if (!global_threadpool_data) {
-        printf("线程池未初始化\n");
+        log_info("线程池未初始化");
         return;
     }
     
     threadpool_private_data_t *pool = global_threadpool_data;
     
     uv_mutex_lock(&pool->queue_mutex);
-    printf("\n=== 线程池统计 ===\n");
-    printf("总线程数: %d\n", pool->config.thread_count);
-    printf("活跃线程数: %d\n", pool->active_threads);
-    printf("队列中工作数: %d\n", pool->queued_work);
-    printf("最大队列大小: %d\n", pool->max_queue_size);
-    printf("工作窃取: %s\n", pool->config.enable_work_stealing ? "启用" : "禁用");
-    printf("优先级队列: %s\n", pool->config.enable_priority_queue ? "启用" : "禁用");
-    printf("==================\n\n");
+    log_info("\n=== 线程池统计 ===");
+    log_info("总线程数: %d", pool->config.thread_count);
+    log_info("活跃线程数: %d", pool->active_threads);
+    log_info("队列中工作数: %d", pool->queued_work);
+    log_info("最大队列大小: %d", pool->max_queue_size);
+    log_info("工作窃取: %s", pool->config.enable_priority_queue ? "启用" : "禁用");
+    log_info("优先级队列: %s", pool->config.enable_priority_queue ? "启用" : "禁用");
+    log_info("==================\n\n");
     uv_mutex_unlock(&pool->queue_mutex);
 }

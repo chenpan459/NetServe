@@ -1,8 +1,12 @@
 #include "src/http/http_module.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "src/log/logger_module.h"
+#include "src/http/http_routes.h"
+#include "src/json/json_parser_module.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <ctype.h>
+#include <uv.h>
 
 // 默认配置
 static http_config_t default_config = {
@@ -102,7 +106,7 @@ int http_module_init(module_interface_t *self, uv_loop_t *loop) {
     self->private_data = data;
     global_http_data = data;
     
-    printf("HTTP模块初始化成功\n");
+    log_info("HTTP模块初始化成功");
     return 0;
 }
 
@@ -124,18 +128,18 @@ int http_module_start(module_interface_t *self) {
     
     int bind_result = uv_tcp_bind(&data->server, (const struct sockaddr*)&addr, 0);
     if (bind_result != 0) {
-        fprintf(stderr, "HTTP服务器绑定地址失败: %s\n", uv_strerror(bind_result));
+        log_error("HTTP服务器绑定地址失败: %s", uv_strerror(bind_result));
         return -1;
     }
     
     // 开始监听
     int listen_result = uv_listen((uv_stream_t*) &data->server, data->config.max_connections, on_new_connection);
     if (listen_result != 0) {
-        fprintf(stderr, "HTTP服务器监听失败: %s\n", uv_strerror(listen_result));
+        log_error("HTTP服务器监听失败: %s", uv_strerror(listen_result));
         return -1;
     }
     
-    printf("HTTP模块启动成功，监听 %s:%d\n", data->config.host, data->config.port);
+    log_info("HTTP模块启动成功，监听 %s:%d", data->config.host, data->config.port);
     return 0;
 }
 
@@ -150,7 +154,7 @@ int http_module_stop(module_interface_t *self) {
     // 关闭服务器
     uv_close((uv_handle_t*) &data->server, NULL);
     
-    printf("HTTP模块已停止\n");
+    log_info("HTTP模块已停止");
     return 0;
 }
 
@@ -182,14 +186,14 @@ int http_module_cleanup(module_interface_t *self) {
     self->private_data = NULL;
     global_http_data = NULL;
     
-    printf("HTTP模块清理完成\n");
+    log_info("HTTP模块清理完成");
     return 0;
 }
 
 // 新连接回调
 static void on_new_connection(uv_stream_t *server, int status) {
     if (status < 0) {
-        fprintf(stderr, "新HTTP连接错误: %s\n", uv_strerror(status));
+        log_error("新HTTP连接错误: %s", uv_strerror(status));
         return;
     }
     
@@ -198,7 +202,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
     // 创建新的客户端连接
     http_client_t *client = malloc(sizeof(http_client_t));
     if (!client) {
-        fprintf(stderr, "内存分配失败\n");
+        log_error("内存分配失败");
         return;
     }
     
@@ -219,7 +223,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
         
         // 开始读取数据
         uv_read_start((uv_stream_t*) &client->tcp, alloc_buffer, on_client_read);
-        printf("新HTTP客户端连接，当前连接数: %d\n", active_clients);
+        log_info("新HTTP客户端连接，当前连接数: %d", active_clients);
     } else {
         free(client->read_buffer);
         free(client);
@@ -243,7 +247,7 @@ static void on_client_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
             size_t new_size = client->read_buffer_size * 2;
             char *new_buffer = realloc(client->read_buffer, new_size);
             if (!new_buffer) {
-                fprintf(stderr, "缓冲区扩展失败\n");
+                log_error("缓冲区扩展失败");
                 uv_close((uv_handle_t*) stream, on_client_close);
                 return;
             }
@@ -280,7 +284,7 @@ static void on_client_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
         free(buf->base);
     } else if (nread < 0) {
         if (nread != UV_EOF) {
-            fprintf(stderr, "HTTP读取错误: %s\n", uv_err_name(nread));
+            log_error("HTTP读取错误: %s", uv_err_name(nread));
         }
         uv_close((uv_handle_t*) stream, on_client_close);
         free(buf->base);
@@ -292,7 +296,7 @@ static void on_client_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
 // 客户端写入回调
 static void on_client_write(uv_write_t *req, int status) {
     if (status) {
-        fprintf(stderr, "HTTP写入错误: %s\n", uv_strerror(status));
+        log_error("HTTP写入错误: %s", uv_strerror(status));
     }
     
     // 释放写入请求
@@ -325,7 +329,7 @@ static void on_client_close(uv_handle_t *handle) {
     }
     free(client);
     
-    printf("HTTP客户端断开连接，当前连接数: %d\n", active_clients);
+    log_info("HTTP客户端断开连接，当前连接数: %d", active_clients);
 }
 
 // 解析HTTP请求
@@ -486,7 +490,7 @@ static void send_response(http_client_t *client, const http_response_t *response
     // 分配响应缓冲区
     char *response_buffer = malloc(response_length + 1);
     if (!response_buffer) {
-        fprintf(stderr, "响应缓冲区分配失败\n");
+        log_error("响应缓冲区分配失败");
         return;
     }
     
@@ -650,7 +654,7 @@ int http_add_route(http_method_t method, const char *path, http_route_handler_t 
     
     uv_mutex_unlock(&global_http_data->routes_mutex);
     
-    printf("添加HTTP路由: %s %s\n", http_method_to_string(method), path);
+    log_info("添加HTTP路由: %s %s", http_method_to_string(method), path);
     return 0;
 }
 
@@ -678,7 +682,7 @@ int http_remove_route(http_method_t method, const char *path) {
             global_http_data->route_count--;
             
             uv_mutex_unlock(&global_http_data->routes_mutex);
-            printf("移除HTTP路由: %s %s\n", http_method_to_string(method), path);
+            log_info("移除HTTP路由: %s %s", http_method_to_string(method), path);
             return 0;
         }
         
@@ -710,7 +714,7 @@ void http_clear_routes(void) {
     global_http_data->route_count = 0;
     
     uv_mutex_unlock(&global_http_data->routes_mutex);
-    printf("清理所有HTTP路由\n");
+    log_info("清理所有HTTP路由");
 }
 
 // 设置JSON解析器
@@ -722,7 +726,7 @@ int http_set_json_parser(json_parser_callback_t parser, void *user_data) {
     global_http_data->json_parser = parser;
     global_http_data->json_parser_user_data = user_data;
     
-    printf("设置HTTP JSON解析器\n");
+    log_info("设置HTTP JSON解析器");
     return 0;
 }
 

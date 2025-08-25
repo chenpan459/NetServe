@@ -548,7 +548,7 @@ int logger_module_cleanup(module_interface_t *self) {
     self->private_data = NULL;
     global_logger_data = NULL;
     
-    printf("日志模块清理完成\n");
+    log_info("日志模块清理完成");
     return 0;
 }
 

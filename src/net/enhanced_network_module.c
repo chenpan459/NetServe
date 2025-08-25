@@ -1,5 +1,7 @@
-#include "enhanced_network_module.h"
-#include "config_module.h"
+#include "src/net/enhanced_network_module.h"
+#include "src/log/logger_module.h"
+#include "src/thread/threadpool_module.h"
+#include "src/config/config_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,7 +59,7 @@ static int add_client(enhanced_network_private_data_t *data, uv_tcp_t *client) {
     data->clients[data->client_count] = client;
     data->client_count++;
     
-    printf("新客户端连接，当前连接数: %zu\n", data->client_count);
+            log_info("新客户端连接，当前连接数: %zu", data->client_count);
     return 0;
 }
 
@@ -70,7 +72,7 @@ static int remove_client(enhanced_network_private_data_t *data, uv_tcp_t *client
                 data->clients[j] = data->clients[j + 1];
             }
             data->client_count--;
-            printf("客户端断开连接，当前连接数: %zu\n", data->client_count);
+            log_info("客户端断开连接，当前连接数: %zu", data->client_count);
             return 0;
         }
     }
@@ -87,7 +89,7 @@ static void on_client_close(uv_handle_t *handle) {
 // 写入完成回调
 static void on_write_complete(uv_write_t *req, int status) {
     if (status) {
-        fprintf(stderr, "写入错误: %s\n", uv_strerror(status));
+        log_error("写入错误: %s", uv_strerror(status));
     }
     
     // 释放写入请求
@@ -152,7 +154,7 @@ static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
         enhanced_network_private_data_t *data = (enhanced_network_private_data_t*) stream->data;
         
         // 显示接收到的消息
-        printf("收到消息: %.*s\n", (int)nread, buf->base);
+        log_info("收到消息: %.*s", (int)nread, buf->base);
         
         // 如果启用了线程池，在线程池中处理请求
         if (data->config.enable_threadpool) {
@@ -171,9 +173,9 @@ static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
                     if (threadpool_submit_work(process_request_in_threadpool, ctx) == 0) {
                         data->total_requests++;
                         data->active_requests++;
-                        printf("请求已提交到线程池处理\n");
+                        log_info("请求已提交到线程池处理");
                     } else {
-                        fprintf(stderr, "提交请求到线程池失败\n");
+                        log_error("提交请求到线程池失败");
                         free(ctx->request_data);
                         free(ctx);
                     }
@@ -191,7 +193,7 @@ static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
         free(buf->base);
     } else if (nread < 0) {
         if (nread != UV_EOF) {
-            fprintf(stderr, "读取错误: %s\n", uv_err_name(nread));
+            log_error("读取错误: %s", uv_err_name(nread));
         }
         uv_close((uv_handle_t*) stream, on_client_close);
     } else {
@@ -209,7 +211,7 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
 // 新连接回调
 static void on_new_connection(uv_stream_t *server, int status) {
     if (status < 0) {
-        fprintf(stderr, "新连接错误: %s\n", uv_strerror(status));
+        log_error("新连接错误: %s", uv_strerror(status));
         return;
     }
     
@@ -218,7 +220,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
     // 创建新的客户端连接
     uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
     if (!client) {
-        fprintf(stderr, "内存分配失败\n");
+        log_error("内存分配失败");
         return;
     }
     
@@ -228,7 +230,7 @@ static void on_new_connection(uv_stream_t *server, int status) {
     if (uv_accept(server, (uv_stream_t*) client) == 0) {
         if (add_client(data, client) == 0) {
             uv_read_start((uv_stream_t*) client, alloc_buffer, on_read);
-            printf("新客户端连接\n");
+            log_info("新客户端连接");
         } else {
             uv_close((uv_handle_t*) client, on_client_close);
         }
@@ -241,17 +243,17 @@ static void on_new_connection(uv_stream_t *server, int status) {
 static void on_stats_timer(uv_timer_t *handle) {
     enhanced_network_private_data_t *data = (enhanced_network_private_data_t*) handle->data;
     
-    printf("\n=== 网络模块统计 ===\n");
-    printf("当前连接数: %zu\n", data->client_count);
-    printf("总请求数: %d\n", data->total_requests);
-    printf("活跃请求数: %d\n", data->active_requests);
+    log_info("\n=== 网络模块统计 ===");
+    log_info("当前连接数: %zu", data->client_count);
+    log_info("总请求数: %d", data->total_requests);
+    log_info("活跃请求数: %d", data->active_requests);
     
     if (data->config.enable_threadpool) {
-        printf("线程池状态:\n");
-        printf("  活跃线程数: %d\n", threadpool_get_active_thread_count());
-        printf("  队列中工作数: %d\n", threadpool_get_queued_work_count());
+        log_info("线程池状态:");
+        log_info("  活跃线程数: %d", threadpool_get_active_thread_count());
+        log_info("  队列中工作数: %d", threadpool_get_queued_work_count());
     }
-    printf("==================\n\n");
+    log_info("==================\n\n");
 }
 
 // 增强网络模块初始化
@@ -291,7 +293,7 @@ int enhanced_network_module_init(module_interface_t *self, uv_loop_t *loop) {
     
     self->private_data = data;
     
-    printf("增强网络模块初始化成功\n");
+    log_info("增强网络模块初始化成功");
     return 0;
 }
 
@@ -306,7 +308,7 @@ int enhanced_network_module_start(module_interface_t *self) {
     // 从配置文件读取端口设置
     int config_port = config_get_int("enhanced_network_port", data->config.port);
     data->config.port = config_port;
-    printf("增强网络模块配置端口: %d (默认: %d)\n", config_port, data->config.port);
+    log_info("增强网络模块配置端口: %d (默认: %d)", config_port, data->config.port);
     
     // 绑定地址
     struct sockaddr_in addr;
@@ -314,22 +316,22 @@ int enhanced_network_module_start(module_interface_t *self) {
     
     int bind_result = uv_tcp_bind(&data->server, (const struct sockaddr*)&addr, 0);
     if (bind_result != 0) {
-        fprintf(stderr, "绑定地址失败: %s\n", uv_strerror(bind_result));
+        log_error("绑定地址失败: %s", uv_strerror(bind_result));
         return -1;
     }
     
     // 开始监听
     int listen_result = uv_listen((uv_stream_t*) &data->server, data->config.backlog, on_new_connection);
     if (listen_result != 0) {
-        fprintf(stderr, "监听失败: %s\n", uv_strerror(listen_result));
+        log_error("监听失败: %s", uv_strerror(listen_result));
         return -1;
     }
     
     // 启动统计定时器（每5秒打印一次统计信息）
     uv_timer_start(&data->stats_timer, on_stats_timer, 5000, 5000);
     
-    printf("增强网络模块启动成功，监听 %s:%d\n", data->config.host, data->config.port);
-    printf("线程池处理: %s\n", data->config.enable_threadpool ? "启用" : "禁用");
+    log_info("增强网络模块启动成功，监听 %s:%d", data->config.host, data->config.port);
+    log_info("线程池处理: %s", data->config.enable_threadpool ? "启用" : "禁用");
     return 0;
 }
 
@@ -352,7 +354,7 @@ int enhanced_network_module_stop(module_interface_t *self) {
     // 关闭服务器
     uv_close((uv_handle_t*) &data->server, NULL);
     
-    printf("增强网络模块已停止\n");
+    log_info("增强网络模块已停止");
     return 0;
 }
 
@@ -378,7 +380,7 @@ int enhanced_network_module_cleanup(module_interface_t *self) {
     free(data);
     self->private_data = NULL;
     
-    printf("增强网络模块清理完成\n");
+    log_info("增强网络模块清理完成");
     return 0;
 }
 
@@ -393,7 +395,7 @@ int enhanced_network_module_set_config(module_interface_t *self, enhanced_networ
     // 更新配置
     data->config = *config;
     
-    printf("增强网络模块配置已更新\n");
+    log_info("增强网络模块配置已更新");
     return 0;
 }
 
@@ -410,18 +412,18 @@ enhanced_network_config_t* enhanced_network_module_get_config(module_interface_t
 // 打印增强网络模块统计信息
 void enhanced_network_module_print_stats(module_interface_t *self) {
     if (!self || !self->private_data) {
-        printf("增强网络模块未初始化\n");
+        log_info("增强网络模块未初始化");
         return;
     }
     
     enhanced_network_private_data_t *data = (enhanced_network_private_data_t*) self->private_data;
     
-    printf("\n=== 增强网络模块统计 ===\n");
-    printf("当前连接数: %zu\n", data->client_count);
-    printf("总请求数: %d\n", data->total_requests);
-    printf("活跃请求数: %d\n", data->active_requests);
-    printf("线程池处理: %s\n", data->config.enable_threadpool ? "启用" : "禁用");
-    printf("最大并发请求数: %d\n", data->config.max_concurrent_requests);
-    printf("请求超时时间: %d ms\n", data->config.request_timeout_ms);
-    printf("========================\n\n");
+    log_info("\n=== 增强网络模块统计 ===");
+    log_info("当前连接数: %zu", data->client_count);
+    log_info("总请求数: %d", data->total_requests);
+    log_info("活跃请求数: %d", data->active_requests);
+    log_info("线程池处理: %s", data->config.enable_threadpool ? "启用" : "禁用");
+    log_info("最大并发请求数: %d", data->config.max_concurrent_requests);
+    log_info("请求超时时间: %d ms", data->config.request_timeout_ms);
+    log_info("========================\n\n");
 }

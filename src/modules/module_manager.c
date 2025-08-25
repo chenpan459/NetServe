@@ -1,7 +1,9 @@
-#include "module_manager.h"
+#include "src/modules/module_manager.h"
+#include "src/log/logger_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
 
 #define INITIAL_MODULE_CAPACITY 16
 
@@ -63,7 +65,7 @@ int module_manager_register_module(module_manager_t *mgr, module_interface_t *mo
     // 检查模块是否已存在
     for (size_t i = 0; i < mgr->module_count; i++) {
         if (strcmp(mgr->modules[i]->name, module->name) == 0) {
-            fprintf(stderr, "模块 %s 已存在\n", module->name);
+            log_error("模块 %s 已存在", module->name);
             return -1;
         }
     }
@@ -79,7 +81,7 @@ int module_manager_register_module(module_manager_t *mgr, module_interface_t *mo
     mgr->modules[mgr->module_count] = module;
     mgr->module_count++;
     
-    printf("模块 %s 注册成功\n", module->name);
+    log_info("模块 %s 注册成功", module->name);
     return 0;
 }
 
@@ -96,12 +98,12 @@ int module_manager_unregister_module(module_manager_t *mgr, const char *module_n
                 mgr->modules[j] = mgr->modules[j + 1];
             }
             mgr->module_count--;
-            printf("模块 %s 注销成功\n", module_name);
+            log_info("模块 %s 注销成功", module_name);
             return 0;
         }
     }
     
-    fprintf(stderr, "模块 %s 不存在\n", module_name);
+    log_error("模块 %s 不存在", module_name);
     return -1;
 }
 
@@ -129,7 +131,7 @@ static int check_module_dependencies(module_manager_t *mgr, module_interface_t *
     for (size_t i = 0; i < module->dependency_count; i++) {
         module_interface_t *dep = module_manager_get_module(mgr, module->dependencies[i]);
         if (!dep || dep->state < MODULE_STATE_INITIALIZED) {
-            fprintf(stderr, "模块 %s 依赖模块 %s 未初始化\n", 
+            log_error("模块 %s 依赖模块 %s 未初始化", 
                     module->name, module->dependencies[i]);
             return -1;
         }
@@ -144,7 +146,7 @@ int module_manager_start(module_manager_t *mgr) {
         return -1;
     }
     
-    printf("正在启动所有模块...\n");
+    log_info("正在启动所有模块...");
     
     // 第一轮：初始化所有模块
     for (size_t i = 0; i < mgr->module_count; i++) {
@@ -157,10 +159,10 @@ int module_manager_start(module_manager_t *mgr) {
             
             if (module->init && module->init(module, mgr->loop) == 0) {
                 module->state = MODULE_STATE_INITIALIZED;
-                printf("模块 %s 初始化成功\n", module->name);
+                log_info("模块 %s 初始化成功", module->name);
             } else {
                 module->state = MODULE_STATE_ERROR;
-                fprintf(stderr, "模块 %s 初始化失败\n", module->name);
+                log_error("模块 %s 初始化失败", module->name);
             }
         }
     }
@@ -172,15 +174,15 @@ int module_manager_start(module_manager_t *mgr) {
         if (module->state == MODULE_STATE_INITIALIZED) {
             if (module->start && module->start(module) == 0) {
                 module->state = MODULE_STATE_STARTED;
-                printf("模块 %s 启动成功\n", module->name);
+                log_info("模块 %s 启动成功", module->name);
             } else {
                 module->state = MODULE_STATE_ERROR;
-                fprintf(stderr, "模块 %s 启动失败\n", module->name);
+                log_error("模块 %s 启动失败", module->name);
             }
         }
     }
     
-    printf("模块启动完成\n");
+    log_info("模块启动完成");
     return 0;
 }
 
@@ -190,7 +192,7 @@ int module_manager_stop(module_manager_t *mgr) {
         return -1;
     }
     
-    printf("正在停止所有模块...\n");
+    log_info("正在停止所有模块...");
     
     for (size_t i = 0; i < mgr->module_count; i++) {
         module_interface_t *module = mgr->modules[i];
@@ -198,9 +200,9 @@ int module_manager_stop(module_manager_t *mgr) {
         if (module->state == MODULE_STATE_STARTED) {
             if (module->stop && module->stop(module) == 0) {
                 module->state = MODULE_STATE_STOPPED;
-                printf("模块 %s 停止成功\n", module->name);
+                log_info("模块 %s 停止成功", module->name);
             } else {
-                fprintf(stderr, "模块 %s 停止失败\n", module->name);
+                log_error("模块 %s 停止失败", module->name);
             }
         }
     }
@@ -214,7 +216,7 @@ int module_manager_shutdown(module_manager_t *mgr) {
         return -1;
     }
     
-    printf("正在关闭所有模块...\n");
+    log_info("正在关闭所有模块...");
     
     // 先停止所有模块
     module_manager_stop(mgr);
@@ -226,9 +228,9 @@ int module_manager_shutdown(module_manager_t *mgr) {
         if (module->state > MODULE_STATE_UNINITIALIZED) {
             if (module->cleanup && module->cleanup(module) == 0) {
                 module->state = MODULE_STATE_UNINITIALIZED;
-                printf("模块 %s 清理成功\n", module->name);
+                log_info("模块 %s 清理成功", module->name);
             } else {
-                fprintf(stderr, "模块 %s 清理失败\n", module->name);
+                log_error("模块 %s 清理失败", module->name);
             }
         }
     }
@@ -248,8 +250,8 @@ void module_manager_list_modules(module_manager_t *mgr) {
         return;
     }
     
-    printf("\n=== 模块列表 ===\n");
-    printf("总模块数: %zu\n", mgr->module_count);
+    log_info("\n=== 模块列表 ===");
+    log_info("总模块数: %zu", mgr->module_count);
     
     for (size_t i = 0; i < mgr->module_count; i++) {
         module_interface_t *module = mgr->modules[i];
@@ -264,7 +266,7 @@ void module_manager_list_modules(module_manager_t *mgr) {
             default: state_str = "未知"; break;
         }
         
-        printf("  %s (v%s): %s\n", module->name, module->version, state_str);
+        log_info("  %s (v%s): %s", module->name, module->version, state_str);
     }
-    printf("================\n\n");
+    log_info("================\n\n");
 }

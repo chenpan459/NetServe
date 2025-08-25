@@ -1,7 +1,9 @@
-#include "memory_pool_module.h"
+#include "src/memory/memory_pool_module.h"
+#include "src/log/logger_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
 
 // 默认配置
 static memory_pool_config_t default_config = {
@@ -289,7 +291,7 @@ int memory_pool_module_init(module_interface_t *self, uv_loop_t *loop) {
     self->private_data = data;
     global_memory_pool_data = data;
     
-    printf("内存池模块初始化成功\n");
+    log_info("内存池模块初始化成功");
     return 0;
 }
 
@@ -305,40 +307,40 @@ int memory_pool_module_start(module_interface_t *self) {
     if (data->config.enable_small_pool) {
         if (init_memory_pool(&data->small_pool, MEMORY_POOL_SMALL_BLOCK_SIZE, 
                             data->config.small_pool_blocks) != 0) {
-            fprintf(stderr, "初始化小内存池失败\n");
+            log_error("初始化小内存池失败");
             return -1;
         }
-        printf("小内存池初始化成功，块大小: %d, 初始块数: %d\n", 
+        log_info("小内存池初始化成功，块大小: %d, 初始块数: %d", 
                MEMORY_POOL_SMALL_BLOCK_SIZE, data->config.small_pool_blocks);
     }
     
     if (data->config.enable_medium_pool) {
         if (init_memory_pool(&data->medium_pool, MEMORY_POOL_MEDIUM_BLOCK_SIZE, 
                             data->config.medium_pool_blocks) != 0) {
-            fprintf(stderr, "初始化中等内存池失败\n");
+            log_error("初始化中等内存池失败");
             return -1;
         }
-        printf("中等内存池初始化成功，块大小: %d, 初始块数: %d\n", 
+        log_info("中等内存池初始化成功，块大小: %d, 初始块数: %d", 
                MEMORY_POOL_MEDIUM_BLOCK_SIZE, data->config.medium_pool_blocks);
     }
     
     if (data->config.enable_large_pool) {
         if (init_memory_pool(&data->large_pool, MEMORY_POOL_LARGE_BLOCK_SIZE, 
                             data->config.large_pool_blocks) != 0) {
-            fprintf(stderr, "初始化大内存池失败\n");
+            log_error("初始化大内存池失败");
             return -1;
         }
-        printf("大内存池初始化成功，块大小: %d, 初始块数: %d\n", 
+        log_info("大内存池初始化成功，块大小: %d, 初始块数: %d", 
                MEMORY_POOL_LARGE_BLOCK_SIZE, data->config.large_pool_blocks);
     }
     
     if (data->config.enable_huge_pool) {
         if (init_memory_pool(&data->huge_pool, MEMORY_POOL_HUGE_BLOCK_SIZE, 
                             data->config.huge_pool_blocks) != 0) {
-            fprintf(stderr, "初始化超大内存池失败\n");
+            log_error("初始化超大内存池失败");
             return -1;
         }
-        printf("超大内存池初始化成功，块大小: %d, 初始块数: %d\n", 
+        log_info("超大内存池初始化成功，块大小: %d, 初始块数: %d", 
                MEMORY_POOL_HUGE_BLOCK_SIZE, data->config.huge_pool_blocks);
     }
     
@@ -347,7 +349,7 @@ int memory_pool_module_start(module_interface_t *self) {
         uv_timer_start(&data->stats_timer, on_stats_timer, 10000, 10000);
     }
     
-    printf("内存池模块启动成功\n");
+    log_info("内存池模块启动成功");
     return 0;
 }
 
@@ -364,7 +366,7 @@ int memory_pool_module_stop(module_interface_t *self) {
         uv_timer_stop(&data->stats_timer);
     }
     
-    printf("内存池模块已停止\n");
+    log_info("内存池模块已停止");
     return 0;
 }
 
@@ -419,7 +421,7 @@ int memory_pool_module_cleanup(module_interface_t *self) {
     self->private_data = NULL;
     global_memory_pool_data = NULL;
     
-    printf("内存池模块清理完成\n");
+    log_info("内存池模块清理完成");
     return 0;
 }
 
@@ -434,7 +436,7 @@ int memory_pool_module_set_config(module_interface_t *self, memory_pool_config_t
     // 更新配置
     data->config = *config;
     
-    printf("内存池模块配置已更新\n");
+    log_info("内存池模块配置已更新");
     return 0;
 }
 
@@ -475,41 +477,41 @@ int memory_pool_get_free_count(void) {
 // 打印内存池统计信息
 void memory_pool_print_stats(void) {
     if (!global_memory_pool_data) {
-        printf("内存池未初始化\n");
+        log_info("内存池未初始化");
         return;
     }
     
     memory_pool_private_data_t *data = global_memory_pool_data;
     
-    printf("\n=== 内存池统计 ===\n");
-    printf("总分配内存: %zu 字节\n", data->total_allocated);
-    printf("总释放内存: %zu 字节\n", data->total_freed);
-    printf("分配次数: %d\n", data->allocation_count);
-    printf("释放次数: %d\n", data->free_count);
+    log_info("\n=== 内存池统计 ===");
+    log_info("总分配内存: %zu 字节", data->total_allocated);
+    log_info("总释放内存: %zu 字节", data->total_freed);
+    log_info("分配次数: %d", data->allocation_count);
+    log_info("释放次数: %d", data->free_count);
     
     if (data->config.enable_small_pool) {
-        printf("小内存池: %d/%d 块 (块大小: %d)\n", 
+        log_info("小内存池: %d/%d 块 (块大小: %d)", 
                data->small_pool.free_blocks, data->small_pool.total_blocks, 
                MEMORY_POOL_SMALL_BLOCK_SIZE);
     }
     
     if (data->config.enable_medium_pool) {
-        printf("中等内存池: %d/%d 块 (块大小: %d)\n", 
+        log_info("中等内存池: %d/%d 块 (块大小: %d)", 
                data->medium_pool.free_blocks, data->medium_pool.total_blocks, 
                MEMORY_POOL_MEDIUM_BLOCK_SIZE);
     }
     
     if (data->config.enable_large_pool) {
-        printf("大内存池: %d/%d 块 (块大小: %d)\n", 
+        log_info("大内存池: %d/%d 块 (块大小: %d)", 
                data->large_pool.free_blocks, data->large_pool.total_blocks, 
                MEMORY_POOL_LARGE_BLOCK_SIZE);
     }
     
     if (data->config.enable_huge_pool) {
-        printf("超大内存池: %d/%d 块 (块大小: %d)\n", 
+        log_info("超大内存池: %d/%d 块 (块大小: %d)", 
                data->huge_pool.free_blocks, data->huge_pool.total_blocks, 
                MEMORY_POOL_HUGE_BLOCK_SIZE);
     }
     
-    printf("==================\n\n");
+    log_info("==================");
 }

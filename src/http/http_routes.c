@@ -1,5 +1,6 @@
 #include "src/http/http_module.h"
 #include "src/json/json_parser_module.h"
+#include "src/log/logger_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +26,7 @@ int handle_get_users(const http_request_t *request, http_response_t *response, v
     (void)request;
     (void)user_data;
     
-    printf("处理GET /api/users请求\n");
+    log_info("处理GET /api/users请求");
     
     // 创建JSON响应
     json_value_t *users_array = json_create_array();
@@ -68,7 +69,7 @@ int handle_get_users(const http_request_t *request, http_response_t *response, v
 int handle_get_user(const http_request_t *request, http_response_t *response, void *user_data) {
     (void)user_data;
     
-    printf("处理GET /api/users/{id}请求，路径: %s\n", request->path);
+    log_info("处理GET /api/users/{id}请求，路径: %s", request->path);
     
     // 解析用户ID（简化处理，假设路径格式为 /api/users/{id}）
     const char *path = request->path;
@@ -126,7 +127,7 @@ int handle_get_user(const http_request_t *request, http_response_t *response, vo
 int handle_create_user(const http_request_t *request, http_response_t *response, void *user_data) {
     (void)user_data;
     
-    printf("处理POST /api/users请求\n");
+    log_info("处理POST /api/users请求");
     
     if (!request->body || request->body_length == 0) {
         return http_send_bad_request_response(response, "请求体不能为空");
@@ -203,7 +204,7 @@ int handle_create_user(const http_request_t *request, http_response_t *response,
 int handle_update_user(const http_request_t *request, http_response_t *response, void *user_data) {
     (void)user_data;
     
-    printf("处理PUT /api/users/{id}请求，路径: %s\n", request->path);
+    log_info("处理PUT /api/users/{id}请求，路径: %s", request->path);
     
     // 解析用户ID
     const char *path = request->path;
@@ -303,7 +304,7 @@ int handle_update_user(const http_request_t *request, http_response_t *response,
 int handle_delete_user(const http_request_t *request, http_response_t *response, void *user_data) {
     (void)user_data;
     
-    printf("处理DELETE /api/users/{id}请求，路径: %s\n", request->path);
+    log_info("处理DELETE /api/users/{id}请求，路径: %s", request->path);
     
     // 解析用户ID
     const char *path = request->path;
@@ -366,7 +367,7 @@ int handle_health_check(const http_request_t *request, http_response_t *response
     (void)request;
     (void)user_data;
     
-    printf("处理GET /api/health请求\n");
+    log_info("处理GET /api/health请求");
     
     // 创建健康状态JSON
     json_value_t *health_obj = json_create_object();
@@ -397,7 +398,7 @@ int handle_health_check(const http_request_t *request, http_response_t *response
 
 // 注册所有HTTP路由
 void register_http_routes(void) {
-    printf("注册HTTP路由...\n");
+    log_info("注册HTTP路由...");
     
     // 用户管理API
     http_add_route(HTTP_METHOD_GET, "/api/users", handle_get_users, NULL);
@@ -415,5 +416,5 @@ void register_http_routes(void) {
     // 系统API
     http_add_route(HTTP_METHOD_GET, "/api/health", handle_health_check, NULL);
     
-    printf("HTTP路由注册完成\n");
+    log_info("HTTP路由注册完成");
 }

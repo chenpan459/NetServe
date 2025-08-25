@@ -1,7 +1,10 @@
-#include "config_module.h"
+#include "src/config/config_module.h"
+#include "src/log/logger_module.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <uv.h>
 
 // 默认配置
 static config_module_config_t default_config = {
@@ -124,7 +127,7 @@ int config_module_init(module_interface_t *self, uv_loop_t *loop) {
     self->private_data = data;
     global_config_data = data;
     
-    printf("配置模块初始化成功\n");
+    log_info("配置模块初始化成功");
     return 0;
 }
 
@@ -141,7 +144,7 @@ int config_module_start(module_interface_t *self) {
         config_load_from_file(data->config.config_file);
     }
     
-    printf("配置模块启动成功\n");
+    log_info("配置模块启动成功");
     return 0;
 }
 
@@ -151,7 +154,7 @@ int config_module_stop(module_interface_t *self) {
         return -1;
     }
     
-    printf("配置模块已停止\n");
+    log_info("配置模块已停止");
     return 0;
 }
 
@@ -198,7 +201,7 @@ int config_module_cleanup(module_interface_t *self) {
     self->private_data = NULL;
     global_config_data = NULL;
     
-    printf("配置模块清理完成\n");
+    log_info("配置模块清理完成");
     return 0;
 }
 
@@ -415,7 +418,7 @@ int config_module_set_config(module_interface_t *self, config_module_config_t *c
     }
     data->config.config_file = config->config_file ? strdup(config->config_file) : NULL;
     
-    printf("配置模块配置已更新\n");
+    log_info("配置模块配置已更新");
     return 0;
 }
 
@@ -437,7 +440,7 @@ int config_load_from_file(const char *filename) {
     
     FILE *fp = fopen(filename, "r");
     if (!fp) {
-        printf("无法打开配置文件: %s\n", filename);
+        log_error("无法打开配置文件: %s", filename);
         return -1;
     }
     
@@ -504,7 +507,7 @@ int config_load_from_file(const char *filename) {
     }
     
     fclose(fp);
-    printf("从文件加载配置完成: %s\n", filename);
+    log_info("从文件加载配置完成: %s", filename);
     return 0;
 }
 
@@ -516,7 +519,7 @@ int config_save_to_file(const char *filename) {
     
     FILE *fp = fopen(filename, "w");
     if (!fp) {
-        printf("无法创建配置文件: %s\n", filename);
+        log_error("无法创建配置文件: %s", filename);
         return -1;
     }
     
@@ -545,38 +548,38 @@ int config_save_to_file(const char *filename) {
     }
     
     fclose(fp);
-    printf("配置已保存到文件: %s\n", filename);
+    log_info("配置已保存到文件: %s", filename);
     return 0;
 }
 
 // 列出所有配置
 void config_list_all(void) {
     if (!global_config_data) {
-        printf("配置模块未初始化\n");
+        log_info("配置模块未初始化");
         return;
     }
     
-    printf("\n=== 配置列表 ===\n");
+    log_info("\n=== 配置列表 ===");
     
     config_item_t *item = global_config_data->items;
     if (!item) {
-        printf("  无配置项\n");
+        log_info("  无配置项");
     } else {
         while (item) {
-            printf("  %s = ", item->key);
+            log_info("  %s = ", item->key);
             
             switch (item->type) {
                 case CONFIG_TYPE_STRING:
-                    printf("%s (string)\n", item->value.string_value ? item->value.string_value : "NULL");
+                    log_info("%s (string)", item->value.string_value ? item->value.string_value : "NULL");
                     break;
                 case CONFIG_TYPE_INT:
-                    printf("%d (int)\n", item->value.int_value);
+                    log_info("%d (int)", item->value.int_value);
                     break;
                 case CONFIG_TYPE_FLOAT:
-                    printf("%.6f (float)\n", item->value.float_value);
+                    log_info("%.6f (float)", item->value.float_value);
                     break;
                 case CONFIG_TYPE_BOOL:
-                    printf("%s (bool)\n", item->value.bool_value ? "true" : "false");
+                    log_info("%s (bool)", item->value.bool_value ? "true" : "false");
                     break;
             }
             
@@ -584,5 +587,5 @@ void config_list_all(void) {
         }
     }
     
-    printf("================\n\n");
+    log_info("================\n\n");
 }

@@ -30,7 +30,7 @@ module_manager_t *module_mgr;
 
 // 程序退出处理
 void cleanup_and_exit(int exit_code) {
-    printf("\n正在关闭程序...\n");
+    log_info("正在关闭程序...");
     
     // 关闭所有模块
     if (module_mgr) {
@@ -43,14 +43,14 @@ void cleanup_and_exit(int exit_code) {
         uv_loop_close(main_loop);
     }
     
-    printf("程序已退出\n");
+    log_info("程序已退出");
     exit(exit_code);
 }
 
 // 信号处理
 void signal_handler(uv_signal_t *handle, int signum) {
     (void)handle; // 避免未使用参数警告
-    printf("\n收到信号 %d，正在退出...\n", signum);
+    log_info("收到信号 %d，正在退出...", signum);
     cleanup_and_exit(0);
 }
 
@@ -62,72 +62,72 @@ static int initialize_config_system() {
 #else
     if (access("config/config.ini", F_OK) != 0) {
 #endif
-        printf("配置文件不存在: config/config.ini\n");
-        printf("请确保配置文件已正确放置在config目录中\n");
+        log_error("配置文件不存在: config/config.ini");
+        log_warn("请确保配置文件已正确放置在config目录中");
         return -1;
     }
     
-    printf("配置文件系统初始化完成\n");
+    log_info("配置文件系统初始化完成");
     return 0;
 }
 
 // 主程序初始化
 int initialize_program() {
-    printf("=== TCP 通信程序启动 ===\n");
+    log_info("=== TCP 通信程序启动 ===");
     
     // 初始化配置文件系统
     if (initialize_config_system() != 0) {
-        fprintf(stderr, "配置文件系统初始化失败\n");
+        log_error("配置文件系统初始化失败");
         return -1;
     }
     
     // 创建主事件循环
     main_loop = uv_default_loop();
     if (!main_loop) {
-        fprintf(stderr, "创建事件循环失败\n");
+        log_error("创建事件循环失败");
         return -1;
     }
     
     // 初始化模块管理器
     module_mgr = module_manager_create(main_loop);
     if (!module_mgr) {
-        fprintf(stderr, "创建模块管理器失败\n");
+        log_error("创建模块管理器失败");
         return -1;
     }
     
     // 注册各个模块
     if (module_manager_register_module(module_mgr, &config_module) != 0) {
-        fprintf(stderr, "注册配置模块失败\n");
+        log_error("注册配置模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, &logger_module) != 0) {
-        fprintf(stderr, "注册日志模块失败\n");
+        log_error("注册日志模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, &memory_pool_module) != 0) {
-        fprintf(stderr, "注册内存池模块失败\n");
+        log_error("注册内存池模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, &threadpool_module) != 0) {
-        fprintf(stderr, "注册线程池模块失败\n");
+        log_error("注册线程池模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, &enhanced_network_module) != 0) {
-        fprintf(stderr, "注册增强网络模块失败\n");
+        log_error("注册增强网络模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, &http_module) != 0) {
-        fprintf(stderr, "注册HTTP模块失败\n");
+        log_error("注册HTTP模块失败");
         return -1;
     }
     
     if (module_manager_register_module(module_mgr, (struct module_interface*)&database_module_interface) != 0) {
-        fprintf(stderr, "注册数据库模块失败\n");
+        log_error("注册数据库模块失败");
         return -1;
     }
     
@@ -137,18 +137,18 @@ int initialize_program() {
     uv_signal_start(signal_handle, signal_handler, SIGINT);
     uv_signal_start(signal_handle, signal_handler, SIGTERM);
     
-    printf("程序初始化完成\n");
+    log_info("程序初始化完成");
     return 0;
 }
 
 // 主程序运行
 int run_program() {
-    printf("程序开始运行...\n");
-    printf("按 Ctrl+C 退出程序\n");
+    log_info("程序开始运行...");
+    log_info("按 Ctrl+C 退出程序");
     
     // 启动所有模块
     if (module_manager_start(module_mgr) != 0) {
-        fprintf(stderr, "启动模块失败\n");
+        log_error("启动模块失败");
         return -1;
     }
     
@@ -159,7 +159,7 @@ int run_program() {
     int result = uv_run(main_loop, UV_RUN_DEFAULT);
     
     if (result != 0) {
-        fprintf(stderr, "事件循环运行失败: %s\n", uv_strerror(result));
+        log_error("事件循环运行失败: %s", uv_strerror(result));
         return -1;
     }
     
@@ -172,13 +172,13 @@ int main(int argc, char *argv[]) {
     
     // 初始化程序
     if (initialize_program() != 0) {
-        fprintf(stderr, "程序初始化失败\n");
+        log_error("程序初始化失败");
         return 1;
     }
     
     // 运行程序
     if (run_program() != 0) {
-        fprintf(stderr, "程序运行失败\n");
+        log_error("程序运行失败");
         cleanup_and_exit(1);
     }
     

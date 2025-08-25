@@ -806,7 +806,9 @@ static uint32_t generate_thread_id(void) {
     return ++counter;
 }
 
+static uint32_t generate_task_id(void) __attribute__((unused));
 static uint32_t generate_task_id(void) {
+    // 生成任务ID，简化实现
     static uint32_t counter = 0;
     return ++counter;
 }
@@ -993,21 +995,27 @@ static uint64_t get_current_time_ms(void) {
     return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
 }
 
+static uint64_t get_thread_cpu_time(pthread_t thread) __attribute__((unused));
 static uint64_t get_thread_cpu_time(pthread_t thread) {
+    (void)thread; // 避免未使用参数警告
     // 简化实现，实际应该使用更精确的CPU时间获取方法
     return get_current_time_ms();
 }
 
+static void update_thread_state(uint32_t thread_id, thread_state_t state) __attribute__((unused));
 static void update_thread_state(uint32_t thread_id, thread_state_t state) {
+    (void)thread_id; // 避免未使用参数警告
+    (void)state;     // 避免未使用参数警告
     int thread_index = find_thread_by_id(thread_id);
     if (thread_index != -1) {
         global_thread_comm_data.threads[thread_index].state = state;
     }
 }
 
+static void worker_thread_function(void *arg) __attribute__((unused));
 static void worker_thread_function(void *arg) {
+    (void)arg; // 避免未使用参数警告
     // 线程池工作线程函数，简化实现
-    (void)arg;
     // 实际实现应该包含任务处理逻辑
 }
 
@@ -1445,6 +1453,7 @@ int thread_comm_receive_message_async(uint32_t receiver_id, thread_msg_t *messag
 }
 
 int thread_comm_poll_messages(uint32_t receiver_id, int timeout_ms) {
+    (void)timeout_ms; // 避免未使用参数警告
     if (!global_thread_comm_data.initialized) {
         global_thread_comm_data.last_error = THREAD_COMM_ERROR_NOT_INITIALIZED;
         return -1;
@@ -1676,6 +1685,7 @@ int thread_comm_reset_statistics(void) {
 }
 
 int thread_comm_enable_monitoring(bool enable) {
+    (void)enable; // 避免未使用参数警告
     if (!global_thread_comm_data.initialized) {
         global_thread_comm_data.last_error = THREAD_COMM_ERROR_NOT_INITIALIZED;
         return -1;
